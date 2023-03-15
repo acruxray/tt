@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Work Time Tracker</title>
+	<link rel="icon" type="image/svg" sizes="32x32" href="">
+	<style>
+		html {
+			font-size: 16px;
+		}
+		body {
+			min-width: 375px;
+			margin: 0;
+			padding: 0;
+			font-family: Ubuntu, Sans-serif;
+			background: #212121;
+			color: #999;
+		}
+
+		.container {
+			margin: 5rem auto;
+			max-width: 60%;
+		}
+
+		@media (max-width: 991px) {
+			.container {
+				max-width: 75%;
+			}
+		}
+
+		@media (max-width: 767px) {
+			.container {
+				max-width: 80%;
+			}
+		}
+
+		@media (max-width: 575px) {
+			.container {
+				max-width: 100%;
+				padding: 0 1.5rem;
+			}
+		}
+
+		.controls {
+			display: flex;
+			justify-content: flex-start;
+
+		}
+
+		button.activator {
+			height: 5rem;
+			width: 8rem;
+			border-radius: 0.25rem;
+			border: 0;
+			cursor: pointer;
+			font-size: 1.3rem;
+			text-transform: uppercase;
+		}
+
+		button.activator.active {
+			background-color: #ff0000;
+			color: #fff;
+			transition: all .3s;
+		}
+
+		input.set {
+			display: block;
+			height: 3rem;
+			width: 3.5rem;
+			padding: 0 .5rem 0 1rem;
+			border-radius: 0.25rem;
+			border: 0;
+			font-size: 1.3rem;
+			outline: none;
+		}
+
+		.current {
+			font-size: 1.3rem;
+		}
+
+		.row {
+			display: flex;
+			align-items: center;
+			justify-content: flex-start;
+		}
+
+		.col {
+			margin-right: 2rem;
+		}
+
+		.history {
+			margin-top: 5rem;
+		}
+
+		.history .col {
+			min-width: 8rem;
+			margin-bottom: 1rem;
+			font-size: .85rem;
+		}
+
+		@media (max-width: 767px) {
+			.history .col {
+				min-width: 5rem;
+			}
+		}
+
+		@media (max-width: 575px) {
+			.history .col {
+				min-width: 3rem;
+			}
+		}
+
+		.history .col.remove {
+			font-size: .75rem;
+			font-weight: bold;
+			opacity: .42;
+			text-transform: uppercase;
+			cursor: pointer;
+		}
+
+		.history .col.remove:hover {
+			opacity: 1;
+			transition: opacity .3s;
+		}
+
+		.day .head .col {
+			font-weight: bold;
+			opacity: .42;
+		}
+
+		.day .common .col {
+			font-weight: bold;
+		}
+	</style>
+</head>
+<body>
+
+<div class="container">
+	<div class="row">
+		<div class="col">
+			<button class="activator" id="activator" onClick="switchState()">Start</button>
+		</div>
+		<div class="col">
+			<input type="number" class="set" id="set" max="480" min="0" placeholder="25">
+		</div>
+		<div class="col">
+			<div class="current" id="current">0m</div>
+		</div>
+	</div>
+	<div class="history" id="history"></div>
+</div>
+
+<script>
+
+let historyData = [];
+let setData = 25;
+let APP_STATE = false;
+let INTERVAL;
+let CURRENT_TIME = 0;
+let START_CURRENT_TIMESTAMP = 0;
+
+const getDateStart = (timestamp) => {
+	return new Date(new Date(timestamp).setUTCHours(0, 0, 0, 0)).getTime(); // timestamp of current date's start
+};
+
+const totalFormat = (time) => {
+	const hours = Math.floor(time / 3600_000);
+	const minutes = Math.floor((time - (hours * 3600_000)) / 60_000);
+
+	return `${hours > 0 ? hours + 'h' : ''} ${minutes > 0 ? minutes + 'm' : '0m'}`;
+};
+
+const timeFormat = (value) => {
+	return `${value.toString().length === 1 ? '0' : ''}${value}`;
+};
+
+const removeRow = (id, dayIndex, rowIndex) => {
+	if (!confirm('Do you really want to remove this history\'s item?')) return;
+
+	document.getElementById(id).remove();
+	historyData[dayIndex].splice(rowIndex, 1);
+	if (!historyData[dayIndex].length) {
+		historyData.splice(dayIndex, 1);
+	}
+	displayHistory();
+	setHistoryData();
+};
+
+const displayHistory = () => {
+	const historyBlock = document.getElementById('history');
+	historyBlock.innerHTML = '';
+
+	if (!historyData.length) return;
+
+	for (const items of historyData) {
+		const dateStart = new Date(getDateStart(items[0][0]));
+		const dayIndex = historyData.indexOf(items);
+
+		const dayElem = document.createElement('div');
+		dayElem.classList.add('day');
+
+		const headElem = document.createElement('div');
+		headElem.classList.add('head');
+		headElem.innerHTML =
+			`
+				<h5 class="day-date">${new Date(items[0][0]).toDateString()}</h5>
+				<div class="row">
+					<div class="col">Start</div>
+					<div class="col">End</div>
+					<div class="col">Total</div>
+				</div>
+			`;
+		dayElem.append(headElem);
+
+		let dayTotal = 0;
+		for (const item of items) {
+			const startDate = new Date(item[0]);
+			const endDate = new Date(item[1]);
+			const total = item[1] - item[0];
+			dayTotal += total;
+			const id = `row${item[0]}`;
+			const rowIndex = items.indexOf(item);
+
+			const rowElem = document.createElement('div');
+			rowElem.classList.add('row');
+			rowElem.id = id;
+			rowElem.innerHTML =
+				`
+					<div class="col" id="start">${timeFormat(startDate.getHours())}:${timeFormat(startDate.getMinutes())}</div>
+					<div class="col" id="end">${timeFormat(endDate.getHours())}:${timeFormat(endDate.getMinutes())}</div>
+					<div class="col" id="total">${totalFormat(total)}</div>
+					<div class="col remove" onClick="removeRow('${id}', ${dayIndex}, ${rowIndex})">Remove</div>
+				`;
+			dayElem.append(rowElem);
+		}
+
+		const startDate = new Date(items[0][0]);
+		const endDate = new Date(items[items.length - 1][1]);
+
+		const totalElem = document.createElement('div');
+		totalElem.classList.add('row', 'common');
+		totalElem.innerHTML =
+			`
+				<div class="col">${timeFormat(startDate.getHours())}:${timeFormat(startDate.getMinutes())}</div>
+				<div class="col">${timeFormat(endDate.getHours())}:${timeFormat(endDate.getMinutes())}</div>
+				<div class="col">${totalFormat(dayTotal)}</div>
+			`;
+		dayElem.append(totalElem);
+
+		historyBlock.prepend(dayElem);
+	}
+};
+
+const setFavicon = (isActive = false) => {
+	document.querySelector("link[rel~='icon']").href = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' height='128' width='128'%3E%3Ccircle cx='64' cy='64' r='64' fill='%23${isActive ? 'ff0000' : '333333'}' /%3E%3C/svg%3E%0A`;
+};
+
+const getHistoryData = () => {
+	const data = localStorage.getItem('tt_history');
+	historyData = JSON.parse(data || '[]');
+};
+
+const setHistoryData = (data = null) => {
+	localStorage.setItem('tt_history', JSON.stringify(data || historyData));
+};
+
+const updateHistoryData = () => {
+	if (CURRENT_TIME === 0) return;
+
+	const todayStartDate = getDateStart(Date.now());
+
+	const updateData = [
+		START_CURRENT_TIMESTAMP,
+		START_CURRENT_TIMESTAMP + CURRENT_TIME,
+	];
+
+	if (historyData.length) {
+		const dayStartDate = getDateStart(historyData[historyData.length - 1][0][0]);
+
+		if (todayStartDate !== dayStartDate) {
+			historyData.push([]);
+			historyData[historyData.length - 1].push(updateData);
+
+			// REMOVE THE OLDEST ITEM
+			if (historyData.length > 5) historyData.shift();
+		}
+
+		if (historyData[historyData.length - 1][historyData[historyData.length - 1].length - 1][0] === updateData[0]) {
+			historyData[historyData.length - 1][historyData[historyData.length - 1].length - 1] = updateData;
+		} else {
+			historyData[historyData.length - 1].push(updateData);
+		}
+	} else {
+		historyData.push([]);
+		historyData[0].push(updateData);
+	}
+
+	setHistoryData();
+};
+
+const updateCurrentBlock = () => {
+	const currentBlock = document.getElementById('current');
+	currentBlock.innerText = totalFormat(CURRENT_TIME);
+};
+
+const tick = () => {
+	CURRENT_TIME += 60_000;
+	updateHistoryData();
+	updateCurrentBlock();
+	watchSet();
+}
+
+const displaySet = () => {
+	const setInput = document.getElementById('set');
+	setInput.value = setData;
+};
+
+const getSetData = () => {
+	const data = localStorage.getItem('tt_set');
+	setData = parseInt(data || setData);
+};
+
+const setSetData = (data = null) => {
+	localStorage.setItem('tt_set', data || setData);
+};
+
+const updateSetData = () => {
+	const setInput = document.getElementById('set');
+	setInput.addEventListener('input', () => {
+		setData = setInput.value || 0;
+		setSetData();
+	});
+};
+
+const initNotifications = () => {
+	document.addEventListener('DOMContentLoaded', () => {
+		if (!Notification) {
+			console.log('Desktop notifications not available in your browser. Try Chromium.');
+			return;
+		}
+
+		if (Notification.permission !== 'granted') {
+			Notification.requestPermission();
+		}
+	});
+};
+
+const displayNotification = () => {
+	if (Notification.permission === 'granted') {
+		const notification = new Notification(
+			'STOP WORK!',
+			{
+				icon: 'red-circle-stop.svg',
+				body: 'LET GET UP!',
+			}
+		);
+		
+		notification.onclick = () => {
+			switchState();
+		};
+	}
+};
+
+const watchSet = () => {
+	if (Math.floor(CURRENT_TIME / 60_000) >= setData) {
+		displayNotification();
+	}
+};
+
+const switchState = () => {
+	APP_STATE = !APP_STATE;
+	setFavicon(APP_STATE);
+
+	const activatorBlock = document.getElementById('activator');
+	activatorBlock.innerText = APP_STATE ? 'Stop' : 'Start';
+	activatorBlock.classList[APP_STATE ? 'add' : 'remove']('active');
+
+	if (APP_STATE) {
+		INTERVAL = setInterval(tick, 60_000);
+		START_CURRENT_TIMESTAMP = Date.now();
+	} else {
+		clearInterval(INTERVAL);
+		updateHistoryData();
+		displayHistory();
+		CURRENT_TIME = 0;
+		START_CURRENT_TIMESTAMP = 0;
+		updateCurrentBlock();
+	}
+};
+
+(async () => {
+	setFavicon();
+
+	getSetData();
+	setSetData();
+	displaySet();
+	updateSetData();
+
+	getHistoryData();
+	displayHistory();
+
+	initNotifications();
+})();
+
+</script>
+
+</body>
+</html>
