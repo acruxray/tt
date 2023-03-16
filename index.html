@@ -155,7 +155,7 @@
 
 const STORAGE_NAME = 'tt_storage';
 const MINUTE_MS = 60_000;
-const HOUR_MS = 60_000;
+const HOUR_MS = 3600_000;
 
 let history = [];
 let set = 25;
@@ -225,7 +225,7 @@ const displayHistory = () => {
 			const rowIndex = items.indexOf(item);
 
 			const rowElem =
-				`<div class="row common" id="${id}">
+				`<div class="row" id="${id}">
 					<div class="col" id="start">${timeFormat(startDate.getHours())}:${timeFormat(startDate.getMinutes())}</div>
 					<div class="col" id="end">${timeFormat(endDate.getHours())}:${timeFormat(endDate.getMinutes())}</div>
 					<div class="col" id="total">${totalFormat(total)}</div>
