@@ -129,23 +129,93 @@
 			opacity: .42;
 		}
 
+		.head-stats {
+			margin-left: 0.5rem;
+		}
+
+		.stats-elem {
+			margin-right: 0.5rem;
+		}
+
+		.stats-elem:last-child {
+			margin-right: 0;
+		}
+
 		.day .common .col {
 			font-weight: bold;
+		}
+
+		button.tasks-types {
+			margin-right: 1rem;
+			width: 42px;
+			height: 42px;
+			border: 0;
+			border-radius: 50%;
+			background-color: #333;
+			cursor: pointer;
+			font-weight: bold;
+			color: #999;
+		}
+
+		button.tasks-types.active {
+			color: #fff;
+		}
+
+		.tasks-types.active.blue-bg {
+			background-color: #0277bd;
+		}
+
+		.tasks-types.active.orange-bg {
+			background-color: #ef6c00;
+		}
+
+		.tasks-types.active.green-bg {
+			background-color: #2e7d32;
+		}
+
+		.blue-text {
+			color: #0277bd;
+		}
+
+		.orange-text {
+			color: #ef6c00;
+		}
+
+		.green-text {
+			color: #2e7d32;
+		}
+
+		@media (max-width: 991px) {
+			.row.top-controls {
+				flex-direction: column;
+				align-items: flex-start;
+			}
+
+			.col.task-types-b {
+				margin-top: 5rem;
+			}
 		}
 	</style>
 </head>
 <body>
 
 <div class="container">
-	<div class="row">
+	<div class="row top-controls">
 		<div class="col">
-			<button class="activator" id="activator" onClick="switchState()">Start</button>
+			<div class="row">
+				<div class="col">
+					<button class="activator" id="activator" onClick="switchState()">Start</button>
+				</div>
+				<div class="col">
+					<input type="number" class="set" id="set" max="480" min="0" placeholder="25">
+				</div>
+				<div class="col">
+					<div class="current" id="current">0m</div>
+				</div>
+			</div>
 		</div>
-		<div class="col">
-			<input type="number" class="set" id="set" max="480" min="0" placeholder="25">
-		</div>
-		<div class="col">
-			<div class="current" id="current">0m</div>
+		<div class="col task-types-b">
+			<div id="tasks_types"></div>
 		</div>
 	</div>
 	<div class="history" id="history"></div>
@@ -163,6 +233,24 @@ let APP_STATE = false;
 let INTERVAL;
 let CURRENT_TIME = 0;
 let START_CURRENT_TIMESTAMP = 0;
+let ACTIVE_TASK_TYPE_ID = 'w';
+const TASKS_TYPES = [
+	{
+		id: 'w',
+		name: 'W',
+		prefixColor: 'blue',
+	},
+	{
+		id: 'p',
+		name: 'P',
+		prefixColor: 'orange',
+	},
+	{
+		id: 's',
+		name: 'S',
+		prefixColor: 'green',
+	},
+];
 
 const getDateStart = (timestamp) => {
 	return new Date(new Date(timestamp).setUTCHours(0, 0, 0, 0)).getTime(); // timestamp of current date's start
@@ -204,31 +292,26 @@ const displayHistory = () => {
 		const dayElem = document.createElement('div');
 		dayElem.classList.add('day');
 
-		const headElem =
-			`<div class="head">
-				<h5 class="day-date">${new Date(items[0][0]).toDateString()}</h5>
-				<div class="row">
-					<div class="col">Start</div>
-					<div class="col">End</div>
-					<div class="col">Total</div>
-				</div>
-			</div>`;
-
 		let rowElems = '';
 		let dayTotal = 0;
+		const totalByTaskTypes = {};
 		for (const item of items) {
 			const startDate = new Date(item[0]);
 			const endDate = new Date(item[1]);
+			const taskTypePrefixColor = getTaskTypePrefixColor(item[2] || 'w');
 			const total = item[1] - item[0];
 			dayTotal += total;
 			const id = `row${item[0]}`;
 			const rowIndex = items.indexOf(item);
 
+			if (!totalByTaskTypes[item[2] || 'w']) totalByTaskTypes[item[2] || 'w'] = 0;
+			totalByTaskTypes[item[2] || 'w'] += total;
+
 			const rowElem =
 				`<div class="row" id="${id}">
 					<div class="col" id="start">${timeFormat(startDate.getHours())}:${timeFormat(startDate.getMinutes())}</div>
 					<div class="col" id="end">${timeFormat(endDate.getHours())}:${timeFormat(endDate.getMinutes())}</div>
-					<div class="col" id="total">${totalFormat(total)}</div>
+					<div class="col ${taskTypePrefixColor}-text" id="total">${totalFormat(total)}</div>
 					<div class="col remove" onClick="removeRow('${id}', ${dayIndex}, ${rowIndex})">Remove</div>
 				</div>`;
 			rowElems = `${rowElems}${rowElem}`;
@@ -242,6 +325,27 @@ const displayHistory = () => {
 				<div class="col">${timeFormat(startDate.getHours())}:${timeFormat(startDate.getMinutes())}</div>
 				<div class="col">${timeFormat(endDate.getHours())}:${timeFormat(endDate.getMinutes())}</div>
 				<div class="col">${totalFormat(dayTotal)}</div>
+			</div>`;
+
+		let totalByTaskTypesList = ``;
+		for (const taskTypeId in totalByTaskTypes) {
+			totalByTaskTypesList = `
+				${totalByTaskTypesList}
+				<span class="stats-elem ${getTaskTypePrefixColor(taskTypeId)}-text">${totalFormat(totalByTaskTypes[taskTypeId])}</span>
+			`;
+		}
+
+		const headElem =
+			`<div class="head">
+				<h5 class="day-date">
+					${new Date(items[0][0]).toDateString()}
+					<span class="head-stats">(${totalByTaskTypesList})</span>
+				</h5>
+				<div class="row">
+					<div class="col">Start</div>
+					<div class="col">End</div>
+					<div class="col">Total</div>
+				</div>
 			</div>`;
 
 		dayElem.innerHTML = `${headElem}${rowElems}${totalElem}`;
@@ -270,6 +374,7 @@ const updateHistory = () => {
 	const updateData = [
 		START_CURRENT_TIMESTAMP,
 		START_CURRENT_TIMESTAMP + CURRENT_TIME,
+		ACTIVE_TASK_TYPE_ID,
 	];
 
 	if (history.length) {
@@ -377,12 +482,40 @@ const switchState = () => {
 	}
 };
 
+const setTaskType = (id) => {
+	ACTIVE_TASK_TYPE_ID = id;
+	initTasksTypes();
+};
+
+const getTaskTypePrefixColor = (id) => {
+	return TASKS_TYPES.find(item => item.id === id).prefixColor;
+};
+
+const initTasksTypes = () => {
+	const tasksTypesBlock = document.getElementById('tasks_types');
+	let tasksTypesList = ``;
+	for (const item of TASKS_TYPES) {
+		tasksTypesList = `
+			${tasksTypesList}
+			<button
+				id="task_types_${item.id}"
+				class="tasks-types ${item.prefixColor}-bg ${item.id === ACTIVE_TASK_TYPE_ID ? 'active' : ''}"
+				onClick="setTaskType('${item.id}')"
+			>
+				${item.name}
+			</button>
+		`;
+	}
+	tasksTypesBlock.innerHTML = tasksTypesList;
+};
+
 (async () => {
 	setFavicon();
 	getStorageData();
 	displaySet();
 	displayHistory();
 	initNotifications();
+	initTasksTypes();
 })();
 
 </script>
