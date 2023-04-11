@@ -239,21 +239,29 @@ const TASKS_TYPES = [
 		id: 'w',
 		name: 'W',
 		prefixColor: 'blue',
+		weekLimit: 72_000_000, // 20h
 	},
 	{
 		id: 'p',
 		name: 'P',
 		prefixColor: 'orange',
+		weekLimit: 27_000_000, // 7.5h
 	},
 	{
 		id: 's',
 		name: 'S',
 		prefixColor: 'green',
+		weekLimit: 18_000_000, // 5h
 	},
 ];
 
 const getDateStart = (timestamp) => {
 	return new Date(new Date(timestamp).setUTCHours(0, 0, 0, 0)).getTime(); // timestamp of current date's start
+};
+
+const getCurrentWeekDateStart = (timestamp) => {
+	const currentDate = new Date(getDateStart(timestamp));
+	return new Date(currentDate.setUTCDate(currentDate.getUTCDate() + 1 - currentDate.getUTCDay() )).getTime(); // timestamp of current week's start
 };
 
 const totalFormat = (time) => {
@@ -285,6 +293,9 @@ const displayHistory = () => {
 
 	if (!history.length) return;
 
+	const weekTotalByTaskTypes = {};
+	const currentWeekDateStart = getCurrentWeekDateStart(Date.now());
+
 	for (const items of history) {
 		const dateStart = new Date(getDateStart(items[0][0]));
 		const dayIndex = history.indexOf(items);
@@ -306,6 +317,11 @@ const displayHistory = () => {
 
 			if (!totalByTaskTypes[item[2] || 'w']) totalByTaskTypes[item[2] || 'w'] = 0;
 			totalByTaskTypes[item[2] || 'w'] += total;
+
+			if (currentWeekDateStart === getCurrentWeekDateStart(item[0])) {
+				if (!weekTotalByTaskTypes[item[2] || 'w']) weekTotalByTaskTypes[item[2] || 'w'] = 0;
+				weekTotalByTaskTypes[item[2] || 'w'] += total;
+			}
 
 			const rowElem =
 				`<div class="row" id="${id}">
@@ -351,6 +367,48 @@ const displayHistory = () => {
 		dayElem.innerHTML = `${headElem}${rowElems}${totalElem}`;
 		historyBlock.prepend(dayElem);
 	}
+
+	const weekStatsElem = document.createElement('div');
+	weekStatsElem.classList.add('day');
+
+	const weekStatsHeadElem =
+		`<div class="head">
+			<h5 class="day-date">Current week</h5>
+			<div class="row">
+				<div class="col">Spent</div>
+				<div class="col">Completed</div>
+				<div class="col">Limit</div>
+			</div>
+		</div>`;
+
+	let weekStatsRowElems = ``;
+	let weekStatsTotal = 0;
+	let commonWeekLimit = 0;
+
+	for (const key in weekTotalByTaskTypes) {
+		const weekLimit = getTaskTypeWeekLimit(key);
+		commonWeekLimit += weekLimit;
+		const taskTypePrefixColor = getTaskTypePrefixColor(key || 'w');
+		weekStatsTotal += weekTotalByTaskTypes[key];
+		weekStatsRowElems = `
+			${weekStatsRowElems}
+			<div class="row">
+				<div class="col ${taskTypePrefixColor}-text">${totalFormat(weekTotalByTaskTypes[key])}</div>
+				<div class="col">${(weekTotalByTaskTypes[key] / weekLimit * 100).toFixed(0)}%</div>
+				<div class="col" id="total">${totalFormat(weekLimit)}</div>
+			</div>
+		`;
+	}
+
+	const weekStatsTotalElem =
+		`<div class="row common">
+			<div class="col">${totalFormat(weekStatsTotal)}</div>
+			<div class="col">${(weekStatsTotal / commonWeekLimit * 100).toFixed(0)}%</div>
+			<div class="col">${totalFormat(commonWeekLimit)}</div>
+		</div>`;
+
+	weekStatsElem.innerHTML = `${weekStatsHeadElem}${weekStatsRowElems}${weekStatsTotalElem}`;
+	historyBlock.prepend(weekStatsElem);
 };
 
 const setFavicon = (isActive = false) => {
@@ -483,12 +541,18 @@ const switchState = () => {
 };
 
 const setTaskType = (id) => {
-	ACTIVE_TASK_TYPE_ID = id;
-	initTasksTypes();
+	if (!APP_STATE) {
+		ACTIVE_TASK_TYPE_ID = id;
+		initTasksTypes();
+	}
 };
 
 const getTaskTypePrefixColor = (id) => {
 	return TASKS_TYPES.find(item => item.id === id).prefixColor;
+};
+
+const getTaskTypeWeekLimit = (id) => {
+	return TASKS_TYPES.find(item => item.id === id).weekLimit;
 };
 
 const initTasksTypes = () => {
