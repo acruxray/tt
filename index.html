@@ -379,6 +379,7 @@ const displayHistory = () => {
 				<div class="col">Spent</div>
 				<div class="col">Completed</div>
 				<div class="col">Limit</div>
+				<div class="col">Left</div>
 			</div>
 		</div>`;
 
@@ -397,6 +398,7 @@ const displayHistory = () => {
 				<div class="col ${taskTypePrefixColor}-text">${totalFormat(weekTotalByTaskTypes[key])}</div>
 				<div class="col">${(weekTotalByTaskTypes[key] / weekLimit * 100).toFixed(0)}%</div>
 				<div class="col" id="total">${totalFormat(weekLimit)}</div>
+				<div class="col" id="total">${totalFormat(weekLimit - weekTotalByTaskTypes[key])}</div>
 			</div>
 		`;
 	}
@@ -406,6 +408,7 @@ const displayHistory = () => {
 			<div class="col">${totalFormat(weekStatsTotal)}</div>
 			<div class="col">${(weekStatsTotal / commonWeekLimit * 100).toFixed(0)}%</div>
 			<div class="col">${totalFormat(commonWeekLimit)}</div>
+			<div class="col">${totalFormat(commonWeekLimit - weekStatsTotal)}</div>
 		</div>`;
 
 	weekStatsElem.innerHTML = `${weekStatsHeadElem}${weekStatsRowElems}${weekStatsTotalElem}`;
