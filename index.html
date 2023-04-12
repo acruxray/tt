@@ -195,6 +195,10 @@
 				margin-top: 5rem;
 			}
 		}
+
+		.day.week-stats {
+			border-bottom: 1px solid #333;
+		}
 	</style>
 </head>
 <body>
@@ -370,7 +374,7 @@ const displayHistory = () => {
 	}
 
 	const weekStatsElem = document.createElement('div');
-	weekStatsElem.classList.add('day');
+	weekStatsElem.classList.add('day', 'week-stats');
 
 	const weekStatsHeadElem =
 		`<div class="head">
