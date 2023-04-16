@@ -266,7 +266,8 @@ const getDateStart = (timestamp) => {
 
 const getCurrentWeekDateStart = (timestamp) => {
 	const currentDate = new Date(getDateStart(timestamp));
-	return new Date(currentDate.setUTCDate(currentDate.getUTCDate() + 1 - currentDate.getUTCDay() )).getTime(); // timestamp of current week's start
+	const currentDay = currentDate.getUTCDay();
+	return new Date(currentDate.setUTCDate(currentDate.getUTCDate() + (currentDay === 0 ? -6 : 1) - currentDay)).getTime(); // timestamp of current week's start
 };
 
 const totalFormat = (time) => {
@@ -396,6 +397,7 @@ const displayHistory = () => {
 		commonWeekLimit += weekLimit;
 		const taskTypePrefixColor = getTaskTypePrefixColor(key || 'w');
 		weekStatsTotal += weekTotalByTaskTypes[key];
+		console.log('KKK', key)
 		weekStatsRowElems = `
 			${weekStatsRowElems}
 			<div class="row">
@@ -410,7 +412,7 @@ const displayHistory = () => {
 	const weekStatsTotalElem =
 		`<div class="row common">
 			<div class="col">${totalFormat(weekStatsTotal)}</div>
-			<div class="col">${(weekStatsTotal / commonWeekLimit * 100).toFixed(0)}%</div>
+			<div class="col">${commonWeekLimit === 0 ? 0 : (weekStatsTotal / commonWeekLimit * 100).toFixed(0)}%</div>
 			<div class="col">${totalFormat(commonWeekLimit)}</div>
 			<div class="col">${totalFormat(commonWeekLimit - weekStatsTotal)}</div>
 		</div>`;
