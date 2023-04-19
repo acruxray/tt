@@ -390,14 +390,12 @@ const displayHistory = () => {
 
 	let weekStatsRowElems = ``;
 	let weekStatsTotal = 0;
-	let commonWeekLimit = 0;
+	let commonWeekLimit = TASKS_TYPES.reduce((acc, cur) => acc + cur.weekLimit, 0);
 
 	for (const key in weekTotalByTaskTypes) {
 		const weekLimit = getTaskTypeWeekLimit(key);
-		commonWeekLimit += weekLimit;
 		const taskTypePrefixColor = getTaskTypePrefixColor(key || 'w');
 		weekStatsTotal += weekTotalByTaskTypes[key];
-		console.log('KKK', key)
 		weekStatsRowElems = `
 			${weekStatsRowElems}
 			<div class="row">
