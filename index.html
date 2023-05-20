@@ -271,10 +271,16 @@ const getCurrentWeekDateStart = (timestamp) => {
 };
 
 const totalFormat = (time) => {
+	let negativeSymbol = '';
+	if (time < 0) {
+		time *= -1;
+		negativeSymbol = '-';
+	}
+
 	const hours = Math.floor(time / HOUR_MS);
 	const minutes = Math.floor((time - (hours * HOUR_MS)) / MINUTE_MS);
 
-	return `${hours > 0 ? hours + 'h' : ''} ${minutes > 0 ? minutes + 'm' : '0m'}`;
+	return `${negativeSymbol}${hours > 0 ? hours + 'h' : ''} ${minutes > 0 ? minutes + 'm' : '0m'}`;
 };
 
 const timeFormat = (value) => {
